@@ -2,7 +2,7 @@ import 'package:attendance_taker/home_screen_student.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'firebase_options.dart';
+import 'package:attendance_taker/home_screen_faculty.dart';
 
 enum UserChoice { student, faculty }
 
