@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "302231550683",
+    "project_id": "login-page-data-1916c",
+    "storage_bucket": "login-page-data-1916c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:302231550683:android:ed604d035cc6f655662afe",
+        "android_client_info": {
+          "package_name": "com.example.attendance_taker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "302231550683-fmjals051577mf428tgr61vveueag4f4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK3gnzLAA7lQlDh88GCdBwFQeLhj8es78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "302231550683-fmjals051577mf428tgr61vveueag4f4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "302231550683-s3r6jp6kk5jt6ruputabtgl8vgij6cn8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.attendanceTaker"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:302231550683:android:4acd499dbdee7190662afe",
+        "android_client_info": {
+          "package_name": "com.example.attendance_takere"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "302231550683-fmjals051577mf428tgr61vveueag4f4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBK3gnzLAA7lQlDh88GCdBwFQeLhj8es78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "302231550683-fmjals051577mf428tgr61vveueag4f4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "302231550683-s3r6jp6kk5jt6ruputabtgl8vgij6cn8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.attendanceTaker"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
