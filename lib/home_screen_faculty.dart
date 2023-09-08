@@ -70,9 +70,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen> {
               SizedBox(height: 16),
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Handle showing feedback
-                  },
+                  onPressed: () {},
                   child: Text(
                     'Show Feedback',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),

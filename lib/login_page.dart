@@ -140,38 +140,73 @@ class _LoginPageState extends State<LoginPage> {
                       width: 30,
                     ),
                     CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Color.fromRGBO(56, 53, 128, 1),
-                      child: IconButton(
-                          onPressed: () async {
-                            try {
-                              final newuser =
-                                  await _auth.signInWithEmailAndPassword(
-                                      email: email, password: password);
-                              if (newuser != null) {
-                                if (_selectedChoice == UserChoice.student) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            HomeScreenStudent()),
-                                  );
-                                } else if (_selectedChoice ==
-                                    UserChoice.faculty) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            FacultyInfoScreen()),
-                                  );
+                        radius: 35,
+                        backgroundColor: Color.fromRGBO(56, 53, 128, 1),
+                        child: IconButton(
+                            onPressed: () async {
+                              try {
+                                final newuser =
+                                    await _auth.signInWithEmailAndPassword(
+                                        email: email, password: password);
+
+                                if (newuser != null) {
+                                  // Firestore instance
+                                  final firestore = FirebaseFirestore.instance;
+
+                                  if (_selectedChoice == UserChoice.student) {
+                                    // Check if email exists in the 'students' collection
+                                    final studentsSnapshot = await firestore
+                                        .collection('students')
+                                        .where('email', isEqualTo: email)
+                                        .get();
+
+                                    if (studentsSnapshot.docs.isNotEmpty) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                HomeScreenStudent()),
+                                      );
+                                    } else {
+                                      // Show error if email is not found
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Email not found in the database!')),
+                                      );
+                                    }
+                                  } else if (_selectedChoice ==
+                                      UserChoice.faculty) {
+                                    // Check if email exists in the 'faculties' collection
+                                    final facultiesSnapshot = await firestore
+                                        .collection('faculties')
+                                        .where('email', isEqualTo: email)
+                                        .get();
+
+                                    if (facultiesSnapshot.docs.isNotEmpty) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                FacultyInfoScreen()),
+                                      );
+                                    } else {
+                                      // Show error if email is not found
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Email not found in the database!')),
+                                      );
+                                    }
+                                  }
                                 }
+                              } catch (e) {
+                                print(e);
                               }
-                            } catch (e) {
-                              print(e);
-                            }
-                          },
-                          icon: Icon(Icons.arrow_forward)),
-                    )
+                            },
+                            icon: Icon(Icons.arrow_forward)))
                   ],
                 )
               ],
