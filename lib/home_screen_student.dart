@@ -21,62 +21,65 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),
             ),
           )),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Center(
-                child: Image.asset(
-                  'assets/images/people.png',
-                  height: 150,
-                ),
-              ),
-              SizedBox(
-                height: 15,
-              ),
-              Text('Name:',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              SizedBox(height: 15),
-              Text('Class: ',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              SizedBox(height: 15),
-              Text('Section: ',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              SizedBox(height: 15),
-              Text('Current Lecture: ',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              SizedBox(height: 50),
-              Center(
-                child: Text('Feedback:',
-                    style:
-                        TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
-              ),
-              SizedBox(height: 15),
-              TextFormField(
-                maxLines: 5,
-                onChanged: (value) {},
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
-                decoration: InputDecoration(
-                  hintText: 'Enter your feedback...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              SizedBox(height: 30),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Handle feedback submission logic here
-                    var success = print('Feedback Submitted: ');
-                  },
-                  child: Text(
-                    'Submit Feedback',
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Image.asset(
+                    'assets/images/people.png',
+                    height: 150,
                   ),
                 ),
-              )
-            ],
+                SizedBox(
+                  height: 15,
+                ),
+                Text('Name:',
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                SizedBox(height: 15),
+                Text('Class: ',
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                SizedBox(height: 15),
+                Text('Current Lecture: ',
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                SizedBox(height: 50),
+                Center(
+                  child: Text('Feedback:',
+                      style:
+                          TextStyle(fontSize: 30, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(height: 15),
+                TextFormField(
+                  maxLines: 5,
+                  onChanged: (value) {},
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
+                  decoration: InputDecoration(
+                    hintText: 'Enter your feedback...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 30),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // Handle feedback submission logic here
+                      var success = print('Feedback Submitted: ');
+                    },
+                    child: Text(
+                      'Submit Feedback',
+                      style:
+                          TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                )
+              ],
+            ),
           ),
         ),
       ),
