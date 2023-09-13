@@ -1,4 +1,8 @@
+import 'package:attendance_taker/home_screen_faculty.dart';
+import 'package:attendance_taker/home_screen_student.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum UserChoice { student, faculty }
 
@@ -13,6 +17,44 @@ class _LoginPageState extends State<LoginPage> {
   UserChoice? _selectedChoice;
   late String email;
   late String password;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  Future<bool> isFacultyEmailExists(String email) async {
+    DocumentReference facultyDocRef =
+        FirebaseFirestore.instance.collection('faculties').doc(email);
+
+    DocumentSnapshot facultyDoc = await facultyDocRef.get();
+
+    return facultyDoc.exists;
+  }
+
+  Future<bool> isEmailInStudentsList(String email) async {
+    DocumentReference ds3rdYrDocRef =
+        FirebaseFirestore.instance.collection('students').doc('DS_3rd_YR');
+
+    DocumentSnapshot ds3rdYrDoc = await ds3rdYrDocRef.get();
+
+    if (ds3rdYrDoc.exists) {
+      var data = ds3rdYrDoc.data() as Map<String, dynamic>;
+      List<dynamic> studentsList = data['students'] ?? [];
+
+      for (var student in studentsList) {
+        if (student['Email'] == email) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  Future logIn(String email, String password) async {
+    try {
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,9 +181,63 @@ class _LoginPageState extends State<LoginPage> {
                         radius: 35,
                         backgroundColor: Color.fromRGBO(56, 53, 128, 1),
                         child: IconButton(
-                          onPressed: () {
-                            // You can replace the below part with your non-Firebase authentication.
-                            print("Login Button Pressed!");
+                          onPressed: () async {
+                            if (email != null &&
+                                password != null &&
+                                _selectedChoice != null) {
+                              String? result = await logIn(email, password);
+                              if (result == null) {
+                                if (_selectedChoice == UserChoice.student) {
+                                  bool isEmailValid =
+                                      await isEmailInStudentsList(email);
+                                  if (isEmailValid) {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                HomeScreenStudent(
+                                                    email: email)));
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Email not found in the list of students'),
+                                      ),
+                                    );
+                                  }
+                                } else if (_selectedChoice ==
+                                    UserChoice.faculty) {
+                                  bool isFacultyEmailValid =
+                                      await isFacultyEmailExists(email);
+                                  if (isFacultyEmailValid) {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                FacultyInfoScreen(
+                                                    email: email)));
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Email not found in the list of faculties'),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('Login failed: $result')),
+                                );
+                              }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(
+                                        'Please fill in all fields and select a user type')),
+                              );
+                            }
                           },
                           icon: Icon(Icons.arrow_forward),
                         ),

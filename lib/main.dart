@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:attendance_taker/home_screen_student.dart';
 import 'package:attendance_taker/login_page.dart';
 import 'package:attendance_taker/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:attendance_taker/home_screen_faculty.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(Attend());
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
@@ -21,8 +23,12 @@ class Attend extends StatelessWidget {
       initialRoute: 'Splash',
       routes: {
         'Splash': (context) => SplashScreen(),
-        'HomeScreenStudent': (context) => HomeScreenStudent(),
-        'FacultyInfoScreen': (context) => FacultyInfoScreen(),
+        'HomeScreenStudent': (context) => HomeScreenStudent(
+              email: '',
+            ),
+        'FacultyInfoScreen': (context) => FacultyInfoScreen(
+              email: '',
+            ),
       },
       theme: ThemeData(fontFamily: 'Gorgeous'),
     );
