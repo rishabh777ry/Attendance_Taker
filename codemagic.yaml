@@ -1,0 +1,24 @@
+workflows:
+  flutter-workflow:
+    name: Flutter App Build
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - flutter pub get
+      - flutter test
+      - flutter build apk --release
+      - flutter build ios --release --no-codesign
+
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/*.aab
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      email:
+        recipients:
+          - rishabh777ry@gmail.com
