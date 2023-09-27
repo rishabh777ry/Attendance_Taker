@@ -14,16 +14,16 @@ Future<void> main() async {
   await Firebase.initializeApp();
   final email = await getUserEmail();
   print("Retrieved email from SharedPreferences: $email");
-  runApp(Attend(
+  runApp(MyApp(
     initialEmail: email,
   ));
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
 }
 
-class Attend extends StatelessWidget {
+class MyApp extends StatelessWidget {
   final String? initialEmail;
-  Attend({this.initialEmail});
+  MyApp({this.initialEmail});
 
   @override
   Widget build(BuildContext context) {
