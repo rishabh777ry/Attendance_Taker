@@ -20,7 +20,7 @@ def flutter_root
   File.dirname(File.realpath(generated_xcode_build_settings_path))
 end
 
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+require File.expand_path('../.symlinks/flutter/ios/.symlinks/flutter_tools/bin/podhelper', __FILE__)
 
 flutter_ios_podfile_setup
 
