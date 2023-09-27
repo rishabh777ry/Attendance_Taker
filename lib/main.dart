@@ -23,7 +23,7 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   final String? initialEmail;
-  MyApp({this.initialEmail});
+  const MyApp({this.initialEmail});
 
   @override
   Widget build(BuildContext context) {
