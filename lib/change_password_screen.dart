@@ -1,72 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
-import 'package:csv/csv.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() => runApp(MyApp());
-
-class MyApp extends StatelessWidget {
+class PasswordChangeScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CSV to Firestore Example',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: UploadStudents(),
-    );
-  }
+  _PasswordChangeScreenState createState() => _PasswordChangeScreenState();
 }
 
-class UploadStudents extends StatefulWidget {
-  @override
-  _UploadStudentsState createState() => _UploadStudentsState();
-}
-
-class _UploadStudentsState extends State<UploadStudents> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    uploadStudentsFromCSV();
-  }
-
-  Future<void> uploadStudentsFromCSV() async {
-    try {
-      // Load the CSV data
-      final ByteData data = await rootBundle.load('assets/data.csv');
-      final List<List<dynamic>> csvTable = CsvToListConverter()
-          .convert(String.fromCharCodes(data.buffer.asUint8List()));
-
-      List<Map<String, dynamic>> studentsList = [];
-
-      for (int i = 1; i < csvTable.length; i++) {
-        studentsList.add({
-          'Name': csvTable[i][0],
-          'Enrollment number': csvTable[i][1],
-          'Email': csvTable[i][2].toString(),
-        });
-      }
-
-      DocumentReference docRef =
-          _firestore.collection('students').doc('DS_3rd_YR');
-
-      await docRef.set({'students': FieldValue.arrayUnion(studentsList)},
-          SetOptions(merge: true));
-
-      print("Student data uploaded successfully!");
-    } catch (error) {
-      print("Error uploading student data: $error");
-    }
-  }
+class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _formKey = GlobalKey<FormState>();
+  String _password = '';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('CSV to Firestore Example'),
-      ),
-      body: Center(
-        child: Text('Check your console for upload status!'),
+      appBar: AppBar(title: Text('Change Password')),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                SizedBox(height: 50.0), // Add some spacing at the top
+
+                SizedBox(height: 50.0), // Add spacing after the image
+                Text(
+                  'Enter your new password',
+                  style: TextStyle(fontSize: 20.0, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 20.0), // Add spacing after the text
+                TextFormField(
+                  decoration: InputDecoration(
+                    labelText: 'New Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  obscureText: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter new password';
+                    }
+                    return null;
+                  },
+                  onChanged: (value) {
+                    setState(() {
+                      _password = value;
+                    });
+                  },
+                ),
+                SizedBox(height: 20.0), // Add spacing before the button
+                ElevatedButton(
+                  child: Text('Change Password'),
+                  style: ElevatedButton.styleFrom(
+                    primary: Colors.blue,
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    textStyle: TextStyle(fontSize: 20),
+                  ),
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      try {
+                        await _auth.currentUser!.updatePassword(_password);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('Password changed successfully!')),
+                        );
+                      } catch (error) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.toString())),
+                        );
+                      }
+                    }
+                  },
+                )
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

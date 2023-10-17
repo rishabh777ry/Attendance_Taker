@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 enum UserChoice { student, faculty }
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();

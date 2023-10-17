@@ -4,7 +4,10 @@ import 'package:location/location.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
+import 'excel.dart';
 import 'change_password_screen.dart';
+import 'function.dart';
+import 'package:flutter/rendering.dart';
 
 double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
   const R = 6371e3; // Earth radius in meters
@@ -38,10 +41,44 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
   double? latitude;
   double? longitude;
   String? studentSubject;
+  int? _selectedRating;
+  String? _selectedDescription;
+  List<Map<String, dynamic>> ratings = [
+    {'rating': 1, 'description': 'Strongly Disagree'},
+    {'rating': 2, 'description': 'Disagree'},
+    {'rating': 3, 'description': 'Fair'},
+    {'rating': 4, 'description': 'Agree'},
+    {'rating': 5, 'description': 'Strongly Agree'},
+  ];
+
+  List<String> questions = [
+    "Were you satisfied with the learning and content?",
+    "Was it engaging, relevant, useful, and interesting?",
+    "Did you find the medium of instruction to be best?",
+    "Was the trainer knowledgeable on the topic?",
+    "Was the trainer enthusiastic and friendly?",
+    "Was the trainer engaging and supportive?",
+    "Was the trainer easy to understand?",
+    "Was the trainer prepared and organized well?",
+    "Overall, how would you rate the trainer?"
+  ];
+
+  Map<String, int> questionRatings = {
+    'Were you satisfied with the learning and content?': 0,
+    'Was it engaging, relevant, useful, and interesting?': 0,
+    'Did you find the medium of instruction to be best?': 0,
+    'Was the trainer knowledgeable on the topic?': 0,
+    'Was the trainer enthusiastic and friendly?': 0,
+    'Was the trainer engaging and supportive?': 0,
+    'Was the trainer easy to understand?': 0,
+    'Was the trainer prepared and organized well?': 0,
+    'Overall, how would you rate the trainer?': 0
+  };
 
   @override
   void initState() {
     super.initState();
+
     fetchLocation();
   }
 
@@ -76,6 +113,32 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
     } catch (e) {
       print("Error fetching location: $e");
     }
+  }
+
+  Widget buildRatingButtonsWithDescription() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: ratings.map((ratingData) {
+        return Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Radio<int>(
+                value: ratingData['rating'],
+                groupValue: _selectedRating,
+                onChanged: (int? value) {
+                  setState(() {
+                    _selectedRating = value;
+                    _selectedDescription = ratingData['description'];
+                  });
+                },
+              ),
+              Text(ratingData['description'])
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Future<void> resetLocationToZero() async {
@@ -144,6 +207,16 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
     }
   }
 
+  Future<void> storeRatingsInFirestore() async {
+    try {
+      FirebaseFirestore _firestore = FirebaseFirestore.instance;
+      await _firestore.collection('ratings').add(questionRatings);
+      print('Ratings stored successfully in Firestore');
+    } catch (e) {
+      print('Error storing ratings: $e');
+    }
+  }
+
   Future<void> storeAttendance(String studentName, String enrollment) async {
     if (studentSubject != null && studentSubject!.isNotEmpty) {
       try {
@@ -182,6 +255,42 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
     } else {
       print('studentSubject is null or empty');
     }
+  }
+
+  Widget questionWithRatings(String question) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          question,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        Row(
+          children: ratings.map((ratingData) {
+            return Expanded(
+              child: Column(
+                children: [
+                  Radio<int>(
+                    value: ratingData['rating'],
+                    groupValue: questionRatings[question],
+                    onChanged: (int? value) {
+                      setState(() {
+                        questionRatings[question] = value!;
+                      });
+                    },
+                  ),
+                  Text(ratingData['description']),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 20),
+      ],
+    );
   }
 
   Future<void> storeFeedback(String feedbackText) async {
@@ -306,6 +415,8 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
                                 fontSize: 30, fontWeight: FontWeight.bold)),
                       ),
                       SizedBox(height: 15),
+                      ...questions.map((q) => questionWithRatings(q)).toList(),
+                      SizedBox(height: 30),
                       TextFormField(
                         controller: _feedbackController,
                         maxLines: 5,
@@ -328,7 +439,9 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
                                     print('Feedback saved.');
                                     storeAttendance(
                                         localStudentName, localEnrollment);
+                                    accessSheet(localEnrollment);
                                     resetLocationToZero();
+                                    storeRatingsInFirestore();
                                   });
                                 }
                               : null, // The button will be disabled if the student is not within the 7-meter range
@@ -349,7 +462,8 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
                             onPressed: () async {
                               final result = await Navigator.of(context).push(
                                   MaterialPageRoute(
-                                      builder: (context) => UploadStudents()));
+                                      builder: (context) =>
+                                          PasswordChangeScreen()));
                               if (result != null && result is String) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text(result)),

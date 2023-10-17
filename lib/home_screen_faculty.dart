@@ -89,6 +89,40 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
     }
   }
 
+  Future<bool> resetLocationData() async {
+    try {
+      FirebaseFirestore firestore = FirebaseFirestore.instance;
+      DocumentReference docRef =
+          firestore.collection('students').doc('DS_3rd_YR');
+
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentSnapshot snapshot = await transaction.get(docRef);
+
+        if (!snapshot.exists) {
+          throw Exception('DS_3rd_YR document not found.');
+        }
+
+        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+        List<dynamic> studentsList = List.from(data['students'] ?? []);
+
+        for (int i = 0; i < studentsList.length; i++) {
+          if (studentsList[i] is Map<String, dynamic>) {
+            (studentsList[i] as Map<String, dynamic>)['flatitude'] = 0;
+            (studentsList[i] as Map<String, dynamic>)['flongitude'] = 0;
+          }
+        }
+
+        transaction.update(docRef, {'students': studentsList});
+      });
+
+      print('Faculty location reset successfully for all students.');
+      return true;
+    } catch (e) {
+      print("Error while resetting location: $e");
+      return false;
+    }
+  }
+
   Future<void> storeLocationInFirestore(
       String email, LocationData location) async {
     FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -282,15 +316,45 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
                 ),
                 SizedBox(height: 16),
                 Center(
-                  child: ElevatedButton(
-                    onPressed: () {},
-                    child: Text(
-                      'Show Feedback',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 30),
-                    ),
-                  ),
+                  child: _isLoading
+                      ? CircularProgressIndicator()
+                      : ElevatedButton(
+                          onPressed: () async {
+                            setState(() {
+                              _isLoading = true; // Set to loading state
+                            });
+                            bool success = await resetLocationData();
+                            setState(() {
+                              _isLoading =
+                                  false; // Reset to idle state after operation
+                            });
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Location data reset successful.'),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Failed to reset location data. Please try again.'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          child: Text(
+                            'Stop Link',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 30,
+                            ),
+                          ),
+                        ),
                 ),
+                SizedBox(height: 16),
                 SizedBox(
                   height: 30,
                 ),
@@ -301,7 +365,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
                       onPressed: () async {
                         final result = await Navigator.of(context).push(
                             MaterialPageRoute(
-                                builder: (context) => UploadStudents()));
+                                builder: (context) => PasswordChangeScreen()));
 
                         if (result != null && result is String) {
                           ScaffoldMessenger.of(context).showSnackBar(

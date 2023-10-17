@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:attendance_taker/home_screen_faculty.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'change_password_screen.dart';
+import 'function.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

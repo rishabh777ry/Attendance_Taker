@@ -6,7 +6,8 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.19.2 <3.0.0'
+  sdk: ">=2.12.0 <3.0.0"
+
 
 dependencies:
   flutter:
@@ -14,12 +15,23 @@ dependencies:
   cupertino_icons: ^1.0.2
   sqflite: ^2.2.8+4
   path: ^1.8.2
-  csv:
-  firebase_core: 
-  firebase_auth: 
+  csv: ^5.0.2
+  firebase_auth: ^4.10.1
   cloud_firestore: ^4.9.1
-  location:
+  location: ^5.0.3
   shared_preferences: ^2.2.1
+  cloud_functions: ^4.4.2
+  googleapis: ^11.4.0
+  googleapis_auth: ^1.4.1
+  gsheets: ^0.5.0
+  oauth2: ^2.0.0
+
+
+  
+
+
+dependency_overrides:
+  http: ^0.13.5
 
 
 dev_dependencies:
@@ -30,6 +42,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
 
 flutter:
+  
   uses-material-design: true
   assets: 
     - assets/images/
