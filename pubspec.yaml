@@ -25,6 +25,8 @@ dependencies:
   googleapis_auth: ^1.4.1
   gsheets: ^0.5.0
   oauth2: ^2.0.0
+  geolocator: ^10.1.0
+  
 
 
   

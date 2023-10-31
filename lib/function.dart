@@ -44,12 +44,10 @@ final _credentials = ServiceAccountCredentials.fromJson({
 
 final _scopes = [SheetsApi.spreadsheetsScope];
 
-void accessSheet(String enrollmentNumber) async {
+void accessSheet(String sheetId, String enrollmentNumber) async {
   final client = await clientViaServiceAccount(_credentials, _scopes);
   final sheetsApi = SheetsApi(client);
 
-  // Assuming Sheet ID and other details
-  final sheetId = '18LnwWTR5eBIM0yeiGljxhb8uVBDdHbHdu7ZI3o4y4kk';
   final range = 'C:C'; // Column where enrollment numbers are stored
 
   // Fetch the column data to locate the enrollment number

@@ -27,7 +27,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
     try {
       FirebaseFirestore firestore = FirebaseFirestore.instance;
       DocumentReference docRef =
-          firestore.collection('students').doc('DS_3rd_YR');
+          firestore.collection('students').doc(_selectedValue!);
 
       DocumentSnapshot snapshot = await docRef.get();
 
@@ -40,6 +40,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
         for (var i = 0; i < students.length; i++) {
           if (students[i] is Map<String, dynamic>) {
             (students[i] as Map<String, dynamic>)['subject'] = subjectText;
+            (students[i] as Map<String, dynamic>)['attendance'] = 1;
           }
         }
 
@@ -80,7 +81,6 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
       setState(() {
         currentLocation = _locationData;
       });
-      await storeLocationInFirestore(widget.email, _locationData);
       print(" Faculty location is : $_locationData");
       return _locationData;
     } catch (e) {
@@ -93,7 +93,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
     try {
       FirebaseFirestore firestore = FirebaseFirestore.instance;
       DocumentReference docRef =
-          firestore.collection('students').doc('DS_3rd_YR');
+          firestore.collection('students').doc(_selectedValue!);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         DocumentSnapshot snapshot = await transaction.get(docRef);
@@ -109,6 +109,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
           if (studentsList[i] is Map<String, dynamic>) {
             (studentsList[i] as Map<String, dynamic>)['flatitude'] = 0;
             (studentsList[i] as Map<String, dynamic>)['flongitude'] = 0;
+            (studentsList[i] as Map<String, dynamic>)['attendance'] = 0;
           }
         }
 
@@ -124,10 +125,10 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
   }
 
   Future<void> storeLocationInFirestore(
-      String email, LocationData location) async {
+      String email, LocationData location, String? sheetId) async {
     FirebaseFirestore firestore = FirebaseFirestore.instance;
     DocumentReference docRef =
-        firestore.collection('students').doc('DS_3rd_YR');
+        firestore.collection('students').doc(_selectedValue!);
 
     await FirebaseFirestore.instance.runTransaction((transaction) async {
       DocumentSnapshot snapshot = await transaction.get(docRef);
@@ -145,6 +146,7 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
               location.latitude;
           (studentsList[i] as Map<String, dynamic>)['flongitude'] =
               location.longitude;
+          (studentsList[i] as Map<String, dynamic>)['sheetId'] = sheetId;
         }
       }
 
@@ -164,6 +166,26 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
       return data['name'] ?? null;
     }
 
+    return null;
+  }
+
+  Future<String?> getSheetId() async {
+    try {
+      // Access the faculties collection
+      DocumentSnapshot facultyDoc = await FirebaseFirestore.instance
+          .collection('faculties')
+          .doc(widget.email)
+          .get();
+
+      if (facultyDoc.exists) {
+        Map<String, dynamic>? data = facultyDoc.data() as Map<String, dynamic>?;
+
+        // Assuming that the selected dropdown value directly corresponds to a field in the faculty document
+        return data?[_selectedValue];
+      }
+    } catch (e) {
+      print("Error fetching sheet ID: $e");
+    }
     return null;
   }
 
@@ -227,13 +249,32 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       items: <String>[
-                        'CSE-DS 2nd YR',
-                        'CSE-DS 3rd YR',
-                        'CSE-IoT 3rd YR',
-                        'IT1 2nd YR',
-                        'IT2 2nd YR',
-                        'IT1 3rd YR',
-                        'IT2 3rd YR',
+                        'AIML_1_2nd_YR',
+                        'AIML_2_2nd_YR',
+                        'AIML_3rd_YR',
+                        'CS_1_2nd_YR',
+                        'CS_1_3rd_YR',
+                        'CS_2_2nd_YR',
+                        'CS_2_3rd_YR',
+                        'CS_3_3rd_YR',
+                        'CS_3_2nd_YR',
+                        'CS_4_3rd_YR',
+                        'CS_4_2nd_YR',
+                        'CS_5_3rd_YR',
+                        'CS_5_2nd_YR',
+                        'CSIT_1_2nd_YR',
+                        'CSIT_1_3rd_YR',
+                        'CSIT_2_2nd_YR',
+                        'CSIT_2_3rd_YR',
+                        'CSIT_3_3rd_YR',
+                        'Cyber_2nd_YR',
+                        'DS_2nd_YR',
+                        'DS_3rd_YR',
+                        'IOT_3rd_YR',
+                        'IT_1_2nd_YR',
+                        'IT_1_3rd_YR',
+                        'IT_2_2nd_YR',
+                        'IT_2_3rd_YR',
                       ].map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
@@ -243,10 +284,27 @@ class _FacultyInfoScreenState extends State<FacultyInfoScreen>
                           ),
                         );
                       }).toList(),
-                      onChanged: (String? newValue) {
+                      onChanged: (String? newValue) async {
                         setState(() {
                           _selectedValue = newValue;
                         });
+
+                        LocationData? latestLocation =
+                            await getCurrentLocation();
+                        String? sheetId = await getSheetId();
+                        if (latestLocation != null) {
+                          // Fetch the sheetId when dropdown value changes
+                          String? sheetId = await getSheetId();
+                          if (sheetId != null) {
+                            print('Sheet ID for $_selectedValue: $sheetId');
+                            await storeLocationInFirestore(
+                                widget.email, latestLocation, sheetId);
+                          } else {
+                            print('Sheet ID not found for $_selectedValue');
+                          }
+                        } else {
+                          print('Failed to fetch current location.');
+                        }
                       },
                     ),
                   ],

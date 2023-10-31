@@ -9,25 +9,83 @@ import 'change_password_screen.dart';
 import 'function.dart';
 import 'package:flutter/rendering.dart';
 
-double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
-  const R = 6371e3; // Earth radius in meters
-  var phi1 = lat1 * (3.141592653589793 / 180.0); // Convert degrees to radians
-  var phi2 = lat2 * (3.141592653589793 / 180.0);
-  var deltaPhi = (lat2 - lat1) * (3.141592653589793 / 180.0);
-  var deltaLambda = (lon2 - lon1) * (3.141592653589793 / 180.0);
+class LatLng {
+  final double latitude;
+  final double longitude;
 
-  var a = sin(deltaPhi / 2) * sin(deltaPhi / 2) +
-      cos(phi1) * cos(phi2) * sin(deltaLambda / 2) * sin(deltaLambda / 2);
-  var c = 2 * atan2(sqrt(a), sqrt(1 - a));
-  var distance = R * c; // in meters
+  LatLng(this.latitude, this.longitude);
+}
 
-  return distance;
+class QuestionRating extends StatefulWidget {
+  final String question;
+  final ValueNotifier<int> value;
+  final ValueChanged<int> onChanged;
+  final Map<String, int> finalizedRatings;
+  final List<Map<String, dynamic>> ratings;
+
+  const QuestionRating({
+    required this.question,
+    required this.value,
+    required this.onChanged,
+    required this.ratings,
+    required this.finalizedRatings,
+  });
+
+  @override
+  _QuestionRatingState createState() => _QuestionRatingState();
+}
+
+class _QuestionRatingState extends State<QuestionRating> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.question,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        Row(
+          children: widget.ratings.map((ratingData) {
+            return Expanded(
+              child: Column(
+                children: [
+                  Radio<int>(
+                    value: ratingData['rating'],
+                    groupValue: widget.value.value,
+                    onChanged: (int? newValue) {
+                      widget.value.value = newValue!;
+                      widget.onChanged(newValue);
+                      widget.finalizedRatings[widget.question] = newValue;
+                    },
+                  ),
+                  Text(ratingData['description']),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+        SizedBox(height: 20),
+      ],
+    );
+  }
 }
 
 class HomeScreenStudent extends StatefulWidget {
   final String email;
+  final String collectionName;
+  final String documentName;
 
-  const HomeScreenStudent({Key? key, required this.email}) : super(key: key);
+  const HomeScreenStudent(
+      {Key? key,
+      required this.email,
+      this.documentName = '',
+      required this.collectionName // Add this line
+      })
+      : super(key: key);
 
   @override
   State<HomeScreenStudent> createState() => _HomeScreenStudentState();
@@ -36,7 +94,11 @@ class HomeScreenStudent extends StatefulWidget {
 class _HomeScreenStudentState extends State<HomeScreenStudent> {
   Location location = Location();
   Timer? _locationTimer;
+  String? _localDocumentName;
   final _feedbackController = TextEditingController();
+
+  ValueNotifier<LocationData?> locationNotifier = ValueNotifier(null);
+  ValueNotifier<int?> attendanceNotifier = ValueNotifier<int?>(null);
 
   double? latitude;
   double? longitude;
@@ -51,40 +113,99 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
     {'rating': 5, 'description': 'Strongly Agree'},
   ];
 
-  List<String> questions = [
-    "Were you satisfied with the learning and content?",
-    "Was it engaging, relevant, useful, and interesting?",
-    "Did you find the medium of instruction to be best?",
-    "Was the trainer knowledgeable on the topic?",
-    "Was the trainer enthusiastic and friendly?",
-    "Was the trainer engaging and supportive?",
-    "Was the trainer easy to understand?",
-    "Was the trainer prepared and organized well?",
-    "Overall, how would you rate the trainer?"
+  Map<String, ValueNotifier<int>> questionRatings = {
+    'Were you satisfied with the learning and content?': ValueNotifier<int>(0),
+    'Was it engaging, relevant, useful, and interesting?':
+        ValueNotifier<int>(0),
+    'Did you find the medium of instruction to be best?': ValueNotifier<int>(0),
+    'Was the trainer knowledgeable on the topic?': ValueNotifier<int>(0),
+    'Was the trainer enthusiastic and friendly?': ValueNotifier<int>(0),
+    'Was the trainer engaging and supportive?': ValueNotifier<int>(0),
+    'Was the trainer easy to understand?': ValueNotifier<int>(0),
+    'Was the trainer prepared and organized well?': ValueNotifier<int>(0),
+    'Overall, how would you rate the trainer?': ValueNotifier<int>(0),
+  };
+
+  Map<String, int> finalizedRatings = {};
+
+  List<LatLng> buildingPolygon = [
+    LatLng(22.817937, 75.940425),
+    LatLng(22.817904, 75.944569),
+    LatLng(22.820794, 75.944523),
+    LatLng(22.822810, 75.944678),
+    LatLng(22.823511, 75.942538),
+    LatLng(22.821979, 75.942039),
   ];
 
-  Map<String, int> questionRatings = {
-    'Were you satisfied with the learning and content?': 0,
-    'Was it engaging, relevant, useful, and interesting?': 0,
-    'Did you find the medium of instruction to be best?': 0,
-    'Was the trainer knowledgeable on the topic?': 0,
-    'Was the trainer enthusiastic and friendly?': 0,
-    'Was the trainer engaging and supportive?': 0,
-    'Was the trainer easy to understand?': 0,
-    'Was the trainer prepared and organized well?': 0,
-    'Overall, how would you rate the trainer?': 0
-  };
+  bool isPointInPolygon(LatLng point, List<LatLng> polygon) {
+    bool isInside = false;
+    int i = 0;
+    int j = polygon.length - 1;
+
+    for (i = 0; i < polygon.length; i++) {
+      if ((polygon[i].longitude < point.longitude &&
+              polygon[j].longitude >= point.longitude) ||
+          (polygon[j].longitude < point.longitude &&
+              polygon[i].longitude >= point.longitude)) {
+        if (polygon[i].latitude +
+                (point.longitude - polygon[i].longitude) /
+                    (polygon[j].longitude - polygon[i].longitude) *
+                    (polygon[j].latitude - polygon[i].latitude) <
+            point.latitude) {
+          isInside = !isInside;
+        }
+      }
+      j = i;
+    }
+
+    return isInside;
+  }
+
+  bool isUserInsideBuilding() {
+    if (locationNotifier.value != null &&
+        locationNotifier.value!.latitude != null &&
+        locationNotifier.value!.longitude != null) {
+      return isPointInPolygon(
+        LatLng(locationNotifier.value!.latitude!,
+            locationNotifier.value!.longitude!),
+        buildingPolygon,
+      );
+    }
+    return false;
+  }
+
+  bool allQuestionsAnswered() {
+    return questionRatings.values.every((notifier) => notifier.value != 0);
+  }
 
   @override
   void initState() {
     super.initState();
-
+    _initializeDocumentName();
     fetchLocation();
+    getAttendanceValue().then((value) {
+      attendanceNotifier.value = value;
+    });
+
+    _locationTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+      fetchLocation();
+    });
+  }
+
+  void _initializeDocumentName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final docName = prefs.getString('documentName');
+    if (docName != null && docName.isNotEmpty) {
+      setState(() {
+        _localDocumentName = docName;
+      });
+    }
   }
 
   Stream<Map<String, dynamic>> getStudentDataStream(String email) {
-    DocumentReference ds3rdYrDocRef =
-        FirebaseFirestore.instance.collection('students').doc('DS_3rd_YR');
+    DocumentReference ds3rdYrDocRef = FirebaseFirestore.instance
+        .collection('students')
+        .doc(widget.documentName);
     return ds3rdYrDocRef.snapshots().map((snapshot) {
       if (snapshot.exists) {
         var data = snapshot.data() as Map<String, dynamic>;
@@ -105,14 +226,51 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
   Future<void> fetchLocation() async {
     try {
       LocationData currentLocation = await location.getLocation();
-      setState(() {
-        latitude = currentLocation.latitude;
-        longitude = currentLocation.longitude;
-        storeLocation();
-      });
+      locationNotifier.value = currentLocation;
+      storeLocation();
     } catch (e) {
       print("Error fetching location: $e");
     }
+  }
+
+  Future<int?> getAttendanceValue() async {
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('students')
+        .doc(widget.documentName)
+        .get();
+    Map<String, dynamic>? data =
+        doc.data() as Map<String, dynamic>?; // Explicit cast
+    List<dynamic> studentsList = data?['students'] ?? [];
+    for (var student in studentsList) {
+      if (student is Map && student['Email'] == widget.email) {
+        // Check if student is a Map
+        return student['attendance'] as int?;
+      }
+    }
+    return null;
+  }
+
+  Future<void> setAttendanceValue(int value) async {
+    DocumentReference docRef = FirebaseFirestore.instance
+        .collection('students')
+        .doc(widget.documentName);
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      DocumentSnapshot snapshot = await transaction.get(docRef);
+      if (!snapshot.exists) {
+        throw Exception(' document not found.');
+      }
+      Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
+      List<dynamic> studentsList = List.from(data['students'] ?? []);
+      for (int i = 0; i < studentsList.length; i++) {
+        if (studentsList[i]['Email'] == widget.email) {
+          studentsList[i]['attendance'] = value;
+          transaction.update(docRef, {'students': studentsList});
+          return;
+        }
+      }
+      throw Exception('Student not found in the  document.');
+    });
+    print('Attendance value updated.');
   }
 
   Widget buildRatingButtonsWithDescription() {
@@ -141,51 +299,22 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
     );
   }
 
-  Future<void> resetLocationToZero() async {
-    final ds3rdYrDocRef =
-        FirebaseFirestore.instance.collection('students').doc('DS_3rd_YR');
-
-    try {
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        DocumentSnapshot snapshot = await transaction.get(ds3rdYrDocRef);
-
-        if (!snapshot.exists) {
-          print('Error: DS_3rd_YR document not found.');
-          throw Exception('DS_3rd_YR document not found.');
-        }
-
-        Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
-        List<dynamic> studentsList = List.from(data['students'] ?? []);
-        print("Trying to store location for email: ${widget.email}");
-        for (int i = 0; i < studentsList.length; i++) {
-          print("Checking against stored email: ${studentsList[i]['Email']}");
-          if (studentsList[i]['Email'] == widget.email) {
-            print('Matched student with Email: ${widget.email}');
-            studentsList[i]['flatitude'] = 0;
-            studentsList[i]['flongitude'] = 0;
-            transaction.update(ds3rdYrDocRef, {'students': studentsList});
-            print(
-                'Location reset successfully for student with Email: ${widget.email}');
-            return;
-          }
-        }
-        print('Student with Email ${widget.email} not found.');
-      });
-    } catch (error) {
-      print('Error resetting location: $error');
-    }
+  Future<String?> getDocumentNameFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('documentName');
   }
 
   Future<void> storeLocation() async {
     try {
-      final ds3rdYrDocRef =
-          FirebaseFirestore.instance.collection('students').doc('DS_3rd_YR');
+      final docRef = FirebaseFirestore.instance
+          .collection('students')
+          .doc(widget.documentName);
 
       await FirebaseFirestore.instance.runTransaction((transaction) async {
-        DocumentSnapshot snapshot = await transaction.get(ds3rdYrDocRef);
+        DocumentSnapshot snapshot = await transaction.get(docRef);
 
         if (!snapshot.exists) {
-          throw Exception('DS_3rd_YR document not found.');
+          throw Exception(' document not found.');
         }
 
         Map<String, dynamic> data = snapshot.data() as Map<String, dynamic>;
@@ -195,11 +324,11 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
           if (studentsList[i]['Email'] == widget.email) {
             studentsList[i]['latitude'] = latitude;
             studentsList[i]['longitude'] = longitude;
-            transaction.update(ds3rdYrDocRef, {'students': studentsList});
+            transaction.update(docRef, {'students': studentsList});
             return;
           }
         }
-        throw Exception('Student not found in the DS_3rd_YR document.');
+        throw Exception('Student not found in the  document.');
       });
       print('Location stored successfully.');
     } catch (error) {
@@ -210,7 +339,19 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
   Future<void> storeRatingsInFirestore() async {
     try {
       FirebaseFirestore _firestore = FirebaseFirestore.instance;
-      await _firestore.collection('ratings').add(questionRatings);
+
+      // Prepare user ratings data
+      Map<String, dynamic> userRating = {widget.email: finalizedRatings};
+
+      // Reference to the appropriate document in the Rating collection
+      DocumentReference docRef =
+          _firestore.collection('ratings').doc(widget.documentName);
+
+      // Atomically add a new user rating to the subject's array
+      await docRef.update({
+        '$studentSubject': FieldValue.arrayUnion([userRating])
+      });
+
       print('Ratings stored successfully in Firestore');
     } catch (e) {
       print('Error storing ratings: $e');
@@ -220,10 +361,10 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
   Future<void> storeAttendance(String studentName, String enrollment) async {
     if (studentSubject != null && studentSubject!.isNotEmpty) {
       try {
-        // Reference to the DS_3rd_YR document inside the Attendance collection
+        // Reference to the  document inside the Attendance collection
         final classDocRef = FirebaseFirestore.instance
             .collection('Attendance')
-            .doc('DS_3rd_YR');
+            .doc(widget.documentName);
 
         DocumentSnapshot snapshot = await classDocRef.get();
 
@@ -248,7 +389,7 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
             .set({studentSubject!: attendanceList}, SetOptions(merge: true));
 
         print(
-            'Attendance stored successfully for class DS_3rd_YR and subject $studentSubject');
+            'Attendance stored successfully for class  and subject $studentSubject');
       } catch (error) {
         print('Error while storing attendance: $error');
       }
@@ -275,11 +416,15 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
                 children: [
                   Radio<int>(
                     value: ratingData['rating'],
-                    groupValue: questionRatings[question],
+                    groupValue: questionRatings[question]
+                        ?.value, // Read value from the ValueNotifier.
                     onChanged: (int? value) {
-                      setState(() {
-                        questionRatings[question] = value!;
-                      });
+                      if (value != null) {
+                        setState(() {
+                          questionRatings[question]?.value =
+                              value; // Update the value inside the ValueNotifier.
+                        });
+                      }
                     },
                   ),
                   Text(ratingData['description']),
@@ -296,8 +441,9 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
   Future<void> storeFeedback(String feedbackText) async {
     if (studentSubject != null && studentSubject!.isNotEmpty) {
       try {
-        final classDocRef =
-            FirebaseFirestore.instance.collection('FeedBack').doc('DS_3rd_YR');
+        final classDocRef = FirebaseFirestore.instance
+            .collection('FeedBack')
+            .doc(widget.documentName);
 
         DocumentSnapshot snapshot = await classDocRef.get();
 
@@ -310,7 +456,7 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
             .set({studentSubject!: feedbacks}, SetOptions(merge: true));
 
         print(
-            'Feedback stored successfully in the FeedBack collection for class DS_3rd_YR and subject $studentSubject');
+            'Feedback stored successfully in the FeedBack collection for class  and subject $studentSubject');
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -332,16 +478,16 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
   Widget build(BuildContext context) {
     print("Logged in student email: ${widget.email}");
     return Scaffold(
-        appBar: AppBar(
-            automaticallyImplyLeading: false,
-            backgroundColor: Color.fromRGBO(56, 53, 128, 1),
-            title: Center(
-              child: Text(
-                'Student & Lecture Info.',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),
-              ),
-            )),
-        body: StreamBuilder<Map<String, dynamic>>(
+      appBar: AppBar(
+          automaticallyImplyLeading: false,
+          backgroundColor: Color.fromRGBO(56, 53, 128, 1),
+          title: Center(
+            child: Text(
+              'Student & Lecture Info.',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 30),
+            ),
+          )),
+      body: StreamBuilder<Map<String, dynamic>>(
           stream: getStudentDataStream(widget.email),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -351,139 +497,134 @@ class _HomeScreenStudentState extends State<HomeScreenStudent> {
               return Center(child: Text('Error: ${snapshot.error}'));
             } else {
               String localStudentName = snapshot.data?['Name'] ?? '';
-              String localEnrollment =
-                  snapshot.data?['Enrollment number'] ?? '';
+              String localEnrollment = snapshot.data?['EnrollmentNumber'] ?? '';
               String localStudentSubject = snapshot.data?['subject'] ?? '';
+              String sheetId = snapshot.data?['sheetId'] ?? '';
 
               studentSubject = localStudentSubject;
 
               print("subject $localStudentSubject");
 
-              bool isWithinRange = false;
-              if (latitude != null &&
-                  longitude != null &&
-                  snapshot.data?['flatitude'] != null &&
-                  snapshot.data?['flongitude'] != null) {
-                double distance = haversineDistance(
-                    latitude!,
-                    longitude!,
-                    double.tryParse(snapshot.data!['flatitude'].toString()) ??
-                        0.0,
-                    double.tryParse(snapshot.data!['flongitude'].toString()) ??
-                        0.0);
-                print("Faculty Latitude: ${snapshot.data!['flatitude']}");
-                print("Faculty Longitude: ${snapshot.data!['flongitude']}");
-                print("Current Latitude: $latitude");
-                print("Current Longitude: $longitude");
-                print("Calculated Distance: $distance");
-
-                // Radius Code is Here!!
-                isWithinRange = distance <= 7;
-              }
-
-              // Combine both conditions
-              bool canSubmitFeedback = isWithinRange;
-
-              return SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Center(
-                        child: Image.asset(
-                          'assets/images/people.png',
-                          height: 150,
-                        ),
-                      ),
-                      SizedBox(height: 15),
-                      Text('Name: $localStudentName',
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 15),
-                      Text('Enroll No. : $localEnrollment',
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 15),
-                      Text('Subject: $localStudentSubject',
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 50),
-                      Center(
-                        child: Text('Feedback:',
-                            style: TextStyle(
-                                fontSize: 30, fontWeight: FontWeight.bold)),
-                      ),
-                      SizedBox(height: 15),
-                      ...questions.map((q) => questionWithRatings(q)).toList(),
-                      SizedBox(height: 30),
-                      TextFormField(
-                        controller: _feedbackController,
-                        maxLines: 5,
-                        onChanged: (value) {},
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 25),
-                        decoration: InputDecoration(
-                          hintText: 'Enter your feedback...',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      SizedBox(height: 30),
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: canSubmitFeedback
-                              ? () async {
-                                  String feedbackText =
-                                      _feedbackController.text;
-                                  storeFeedback(feedbackText).then((_) {
-                                    print('Feedback saved.');
-                                    storeAttendance(
-                                        localStudentName, localEnrollment);
-                                    accessSheet(localEnrollment);
-                                    resetLocationToZero();
-                                    storeRatingsInFirestore();
-                                  });
-                                }
-                              : null, // The button will be disabled if the student is not within the 7-meter range
-                          child: Text(
-                            'Submit Feedback',
-                            style: TextStyle(
-                                fontSize: 30, fontWeight: FontWeight.bold),
+              return ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Center(
+                          child: Image.asset(
+                            'assets/images/people.png',
+                            height: 150,
                           ),
                         ),
-                      ),
-                      SizedBox(
-                        height: 30,
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton(
-                            onPressed: () async {
-                              final result = await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (context) =>
-                                          PasswordChangeScreen()));
-                              if (result != null && result is String) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(result)),
-                                );
-                              }
-                            },
+                        SizedBox(height: 15),
+                        Text('Name: $localStudentName',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 15),
+                        Text('Enroll No. : $localEnrollment',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 15),
+                        Text('Subject: $localStudentSubject',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 50),
+                        Center(
+                          child: Text('Feedback:',
+                              style: TextStyle(
+                                  fontSize: 30, fontWeight: FontWeight.bold)),
+                        ),
+                        SizedBox(height: 15),
+                        ...questionRatings.entries
+                            .map((entry) => QuestionRating(
+                                  question: entry.key,
+                                  value: entry.value,
+                                  onChanged: (int? value) {
+                                    if (value != null) {
+                                      setState(() {
+                                        entry.value.value = value;
+                                      });
+                                    }
+                                  },
+                                  ratings: ratings,
+                                  finalizedRatings: finalizedRatings,
+                                ))
+                            .toList(),
+                        SizedBox(height: 30),
+                        TextFormField(
+                          controller: _feedbackController,
+                          maxLines: 5,
+                          onChanged: (value) {},
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 25),
+                          decoration: InputDecoration(
+                            hintText: 'Enter your feedback...',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        SizedBox(height: 30),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: (attendanceNotifier.value == 1 &&
+                                    isUserInsideBuilding() &&
+                                    allQuestionsAnswered())
+                                ? () async {
+                                    String feedbackText =
+                                        _feedbackController.text;
+                                    await storeFeedback(feedbackText);
+                                    await storeRatingsInFirestore();
+
+                                    print('Feedback saved.');
+                                    await storeAttendance(
+                                        localStudentName, localEnrollment);
+                                    accessSheet(sheetId, localEnrollment);
+                                    await setAttendanceValue(0);
+                                    attendanceNotifier.value =
+                                        0; // Update the notifier's value
+                                  }
+                                : null,
                             child: Text(
-                              'Change Password',
-                              style:
-                                  TextStyle(fontSize: 22, color: Colors.blue),
+                              'Submit Feedback',
+                              style: TextStyle(
+                                  fontSize: 30, fontWeight: FontWeight.bold),
                             ),
                           ),
-                        ],
-                      )
-                    ],
+                        ),
+                        SizedBox(
+                          height: 30,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TextButton(
+                              onPressed: () async {
+                                final result = await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            PasswordChangeScreen()));
+                                if (result != null && result is String) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(result)),
+                                  );
+                                }
+                              },
+                              child: Text(
+                                'Change Password',
+                                style:
+                                    TextStyle(fontSize: 22, color: Colors.blue),
+                              ),
+                            ),
+                          ],
+                        )
+                      ],
+                    ),
                   ),
-                ),
+                ],
               );
             }
-          },
-        ));
+          }),
+    );
   }
 }

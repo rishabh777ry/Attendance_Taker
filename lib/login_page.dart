@@ -30,31 +30,66 @@ class _LoginPageState extends State<LoginPage> {
     return facultyDoc.exists;
   }
 
-  Future<bool> isEmailInStudentsList(String email) async {
-    DocumentReference ds3rdYrDocRef =
-        FirebaseFirestore.instance.collection('students').doc('DS_3rd_YR');
+  Future<String?> isEmailInStudentsList(String email) async {
+    List<String> docNames = [
+      'AIML_1_2nd_YR',
+      'AIML_2_2nd_YR',
+      'AIML_3rd_YR',
+      'CS_1_2nd_YR',
+      'CS_1_3rd_YR',
+      'CS_2_2nd_YR',
+      'CS_2_3rd_YR',
+      'CS_3_3rd_YR',
+      'CS_3_2nd_YR',
+      'CS_4_3rd_YR',
+      'CS_4_2nd_YR',
+      'CS_5_3rd_YR',
+      'CS_5_2nd_YR',
+      'CSIT_1_2nd_YR',
+      'CSIT_1_3rd_YR',
+      'CSIT_2_2nd_YR',
+      'CSIT_2_3rd_YR',
+      'CSIT_3_3rd_YR',
+      'Cyber_2nd_YR',
+      'DS_2nd_YR',
+      'DS_3rd_YR',
+      'IOT_3rd_YR',
+      'IT_1_2nd_YR',
+      'IT_1_3rd_YR',
+      'IT_2_2nd_YR',
+      'IT_2_3rd_YR',
+    ];
 
-    DocumentSnapshot ds3rdYrDoc = await ds3rdYrDocRef.get();
+    for (String docName in docNames) {
+      DocumentReference docRef =
+          FirebaseFirestore.instance.collection('students').doc(docName);
 
-    if (ds3rdYrDoc.exists) {
-      var data = ds3rdYrDoc.data() as Map<String, dynamic>;
-      List<dynamic> studentsList = data['students'] ?? [];
+      DocumentSnapshot doc = await docRef.get();
 
-      for (var student in studentsList) {
-        if (student['Email'] == email) {
-          return true;
+      if (doc.exists) {
+        var data = doc.data() as Map<String, dynamic>;
+        List<dynamic> studentsList = data['students'] ?? [];
+
+        for (var student in studentsList) {
+          if (student['Email'] == email) {
+            return docName; // Email found in the current document
+          }
         }
       }
     }
 
-    return false;
+    return null; // If the loop completes without finding the email
   }
 
-  Future<void> saveUserSession(String email, UserChoice choice) async {
+  Future<void> saveUserSession(String email, UserChoice choice,
+      [String? documentName]) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
       await prefs.setString('userEmail', email);
+      if (documentName != null && documentName.isNotEmpty) {
+        await prefs.setString('documentName', documentName);
+      }
       prefs.setString(
           'userType', choice == UserChoice.student ? 'student' : 'faculty');
     } catch (e) {
@@ -221,27 +256,28 @@ class _LoginPageState extends State<LoginPage> {
                               if (email != null &&
                                   password != null &&
                                   _selectedChoice != null) {
-                                String? result = await logIn(email, password);
+                                String? loginError =
+                                    await logIn(email, password);
 
-                                if (result == null) {
+                                if (loginError == null) {
+                                  // Sign in was successful.
                                   if (_selectedChoice == UserChoice.student) {
-                                    bool isEmailValid =
+                                    String? collectionName =
                                         await isEmailInStudentsList(email);
-                                    if (isEmailValid) {
-                                      await saveUserSession(
-                                          email, UserChoice.student);
-                                      print(
-                                          "Saving email to SharedPreferences: $email");
-                                      final prefsTest =
-                                          await SharedPreferences.getInstance();
-                                      print(
-                                          "Saved email: ${prefsTest.getString('userEmail')}");
+
+                                    if (collectionName != null) {
+                                      await saveUserSession(email,
+                                          UserChoice.student, collectionName);
                                       Navigator.pushReplacement(
                                           context,
                                           MaterialPageRoute(
                                               builder: (context) =>
                                                   HomeScreenStudent(
-                                                      email: email)));
+                                                    email: email,
+                                                    documentName:
+                                                        collectionName,
+                                                    collectionName: '',
+                                                  )));
                                     } else {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
@@ -255,6 +291,7 @@ class _LoginPageState extends State<LoginPage> {
                                       UserChoice.faculty) {
                                     bool isFacultyEmailValid =
                                         await isFacultyEmailExists(email);
+
                                     if (isFacultyEmailValid) {
                                       await saveUserSession(
                                           email, UserChoice.faculty);
@@ -277,15 +314,16 @@ class _LoginPageState extends State<LoginPage> {
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                        content: Text(
-                                            'Login failed: Incorrect email/Password!')),
+                                        content:
+                                            Text('Login failed: $loginError')),
                                   );
                                 }
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text(
-                                          'Please fill in all fields and select a user type')),
+                                    content: Text(
+                                        'Please fill in all fields and select a user type'),
+                                  ),
                                 );
                               }
                             },

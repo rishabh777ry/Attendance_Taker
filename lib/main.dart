@@ -13,10 +13,10 @@ import 'function.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  final email = await getUserEmail();
-  print("Retrieved email from SharedPreferences: $email");
+  final userDetails = await getUserDetails();
   runApp(MyApp(
-    initialEmail: email,
+    initialEmail: userDetails['email'],
+    initialDocumentName: userDetails['documentName'],
   ));
   SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
@@ -24,7 +24,8 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   final String? initialEmail;
-  const MyApp({this.initialEmail});
+  final String? initialDocumentName;
+  const MyApp({this.initialEmail, this.initialDocumentName});
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +33,14 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: 'Splash',
       routes: {
-        'Splash': (context) => SplashScreen(initialEmail: initialEmail),
+        'Splash': (context) => SplashScreen(
+              initialEmail: initialEmail,
+              initialDocumentName: initialDocumentName,
+            ),
         'HomeScreenStudent': (context) => HomeScreenStudent(
               email: '',
+              collectionName: '',
+              documentName: '',
             ),
         'FacultyInfoScreen': (context) => FacultyInfoScreen(
               email: '',
@@ -44,23 +50,24 @@ class MyApp extends StatelessWidget {
   }
 }
 
-Future<String?> getUserEmail() async {
+Future<Map<String, String?>> getUserDetails() async {
   final prefs = await SharedPreferences.getInstance();
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('userEmail');
-    print("Retrieved email from SharedPreferences: $email");
-  } catch (e) {
-    print("Error retrieving email from SharedPreferences: $e");
-  }
-
-  return prefs.getString('userEmail');
+  final email = prefs.getString('userEmail');
+  final docName = prefs.getString('documentName');
+  print("Retrieved email from SharedPreferences: $email");
+  print("Retrieved documentName from SharedPreferences: $docName");
+  return {
+    'email': email,
+    'documentName': docName,
+  };
 }
 
 // Splash Screen Code //
 class SplashScreen extends StatefulWidget {
   final String? initialEmail;
-  const SplashScreen({Key? key, this.initialEmail}) : super(key: key);
+  final String? initialDocumentName;
+  const SplashScreen({Key? key, this.initialEmail, this.initialDocumentName})
+      : super(key: key);
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -89,6 +96,8 @@ class _SplashScreenState extends State<SplashScreen> {
             MaterialPageRoute(
               builder: (context) => HomeScreenStudent(
                 email: widget.initialEmail ?? '',
+                collectionName: '',
+                documentName: widget.initialDocumentName ?? '',
               ),
             ));
       } else if (userType == 'faculty') {
